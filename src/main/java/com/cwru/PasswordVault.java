@@ -1,14 +1,29 @@
 package com.cwru;
 
-import java.io.*;
-import java.nio.file.*;
-import java.security.*;
+import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.GeneralSecurityException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
-import java.util.*;
-import java.util.regex.*;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
-import javax.crypto.*;
-import javax.crypto.spec.*;
+
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
 
 public class PasswordVault {
   private static final String ALGORITHM = "AES";
@@ -25,60 +40,51 @@ public class PasswordVault {
 
   /**
    * Initializes the PasswordVault with the given filename and password.
-   *
+   * 
    * @param filename The name of the password file
    * @param password The master password for encryption/decryption
    * @throws PasswordVaultInitException If there's an error during initialization
    */
   public PasswordVault(String filename, String password) throws PasswordVaultInitException {
     this.filename = filename;
+    this.map = new HashMap<>();
+
     try {
-      this.map = loadFile(filename);
+      try (Stream<String> lines = Files.lines(Paths.get(filename))) {
+        Iterator<String> iterator = lines.iterator();
+
+        if (!iterator.hasNext()) {
+          throw new PasswordFileParserException("File is empty");
+        }
+
+        String[] saltAndToken = iterator.next().split(":");
+        this.salt = Base64.getDecoder().decode(saltAndToken[0]);
+        String decryptedToken = decrypt(saltAndToken[1]); // Just to check if the password is correct
+        if (!decryptedToken.equals("verification_token")) {
+          throw new PasswordVaultInitException("Incorrect password");
+        }
+
+        while (iterator.hasNext()) {
+          String line = iterator.next();
+          Matcher matcher = pattern.matcher(line);
+          if (matcher.matches()) {
+            this.map.put(matcher.group(1), matcher.group(2));
+          } else {
+            throw new PasswordFileParserException("Invalid line format: " + line);
+          }
+        }
+      }
+
       this.cipher = Cipher.getInstance("AES");
       this.secretKey = generateSecretKey(password, salt);
     } catch (FileNotFoundException e) {
       createNewFile(filename);
-      throw new PasswordVaultInitException("Password file not found, new file created", e);
+      throw new PasswordVaultInitException("Password file not found, created new file");
+    } catch (PasswordFileParserException e) {
+      throw new PasswordVaultInitException("Error parsing password file", e);
     } catch (Exception e) {
-      e.printStackTrace();
       throw new PasswordVaultInitException("Error initializing PasswordVault", e);
     }
-  }
-
-  /**
-   * Loads the password file and parses its contents.
-   *
-   * @param filename The name of the file to load
-   * @return A map of the parsed key-value pairs
-   * @throws IOException                 If there's an error reading the file
-   * @throws PasswordFileParserException If there's an error parsing the file
-   *                                     contents
-   */
-  private Map<String, String> loadFile(String filename)
-      throws IOException, PasswordFileParserException {
-    Map<String, String> map = new HashMap<>();
-
-    try (Stream<String> lines = Files.lines(Paths.get(filename))) {
-      Iterator<String> iterator = lines.iterator();
-
-      if (!iterator.hasNext()) {
-        throw new PasswordFileParserException("File is empty");
-      }
-
-      salt = Base64.getDecoder().decode(iterator.next());
-
-      while (iterator.hasNext()) {
-        String line = iterator.next();
-        Matcher matcher = pattern.matcher(line);
-        if (matcher.matches()) {
-          map.put(matcher.group(1), matcher.group(2));
-        } else {
-          throw new PasswordFileParserException("Invalid line format: " + line);
-        }
-      }
-    }
-
-    return map;
   }
 
   /**
