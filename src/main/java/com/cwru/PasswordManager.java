@@ -60,7 +60,6 @@ public class PasswordManager {
         System.out.println();
       } catch (Exception e) {
         System.out.println("Error: " + e.getMessage());
-        continue;
       }
     }
   }
