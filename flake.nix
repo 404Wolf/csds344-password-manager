@@ -20,6 +20,7 @@
             jdt-language-server
             openjdk
             maven
+            google-java-format
           ];
         };
       };
