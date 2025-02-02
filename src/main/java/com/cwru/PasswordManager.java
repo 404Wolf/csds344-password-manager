@@ -16,7 +16,7 @@ public class PasswordManager {
     try {
       fileParser = new PasswordVault(FILE_NAME, passcode);
     } catch (PasswordVaultInitException e) {
-      System.out.println("Error initializing password file: " + e.getMessage());
+      System.out.println("Error opening vault, possibly incorrect password.");
       scanner.close();
       System.exit(1);
       return;
@@ -57,6 +57,7 @@ public class PasswordManager {
           default:
             System.out.println("Invalid choice. Please try again.");
         }
+        System.out.println();
       } catch (Exception e) {
         System.out.println("Error: " + e.getMessage());
         continue;

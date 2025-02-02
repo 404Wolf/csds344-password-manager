@@ -1,9 +1,4 @@
 package com.cwru;
 
-/**
- * CryptoException
- */
-public class CryptoException {
-
-}
-
+/** CryptoException */
+public class CryptoException {}

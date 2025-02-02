@@ -1,10 +1,8 @@
 package com.cwru;
 
 import java.io.BufferedWriter;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
 import java.security.NoSuchAlgorithmException;
@@ -18,7 +16,6 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
-
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
@@ -37,10 +34,11 @@ public class PasswordVault {
   private String filename;
   private Cipher cipher;
   private SecretKey secretKey;
+  public final boolean freshFile;
 
   /**
    * Initializes the PasswordVault with the given filename and password.
-   * 
+   *
    * @param filename The name of the password file
    * @param password The master password for encryption/decryption
    * @throws PasswordVaultInitException If there's an error during initialization
@@ -51,38 +49,50 @@ public class PasswordVault {
 
     try {
       this.cipher = Cipher.getInstance("AES");
-      try (Stream<String> lines = Files.lines(Paths.get(filename))) {
-        Iterator<String> iterator = lines.iterator();
-
-        if (!iterator.hasNext()) {
-          throw new PasswordFileParserException("File is empty");
-        }
-
-        String[] saltAndToken = iterator.next().split(":");
-        this.salt = Base64.getDecoder().decode(saltAndToken[0]);
-        String decryptedToken = decrypt(saltAndToken[1]); // Just to check if the password is correct
-        if (!decryptedToken.equals("verification_token")) {
-          throw new PasswordVaultInitException("Incorrect password");
-        }
-
-        while (iterator.hasNext()) {
-          String line = iterator.next();
-          Matcher matcher = pattern.matcher(line);
-          if (matcher.matches()) {
-            this.map.put(matcher.group(1), matcher.group(2));
-          } else {
-            throw new PasswordFileParserException("Invalid line format: " + line);
-          }
-        }
-      }
+      this.salt = generateSalt();
       this.secretKey = generateSecretKey(password, salt);
-    } catch (FileNotFoundException | NoSuchFileException e) {
-      createNewFile(filename, password);
-      throw new PasswordVaultInitException("Password file not found, created new file");
-    } catch (PasswordFileParserException e) {
-      throw new PasswordVaultInitException("Error parsing password file", e);
+
+      if (Files.exists(Paths.get(filename))) {
+        this.freshFile = false;
+        loadExistingFile(password);
+      } else {
+        this.freshFile = true;
+        createNewFile();
+      }
     } catch (Exception e) {
       throw new PasswordVaultInitException("Error initializing PasswordVault", e);
+    }
+  }
+
+  private void loadExistingFile(String password)
+      throws IOException,
+          PasswordFileParserException,
+          GeneralSecurityException,
+          PasswordVaultInitException {
+    try (Stream<String> lines = Files.lines(Paths.get(filename))) {
+      Iterator<String> iterator = lines.iterator();
+
+      if (!iterator.hasNext()) {
+        throw new PasswordFileParserException("File is empty");
+      }
+
+      String[] saltAndToken = iterator.next().split(":");
+      this.salt = Base64.getDecoder().decode(saltAndToken[0]);
+      this.secretKey = generateSecretKey(password, salt);
+      String decryptedToken = decrypt(saltAndToken[1]);
+      if (!decryptedToken.equals("verification_token")) {
+        throw new PasswordVaultInitException("Incorrect password");
+      }
+
+      while (iterator.hasNext()) {
+        String line = iterator.next();
+        Matcher matcher = pattern.matcher(line);
+        if (matcher.matches()) {
+          this.map.put(matcher.group(1), matcher.group(2));
+        } else {
+          throw new PasswordFileParserException("Invalid line format: " + line);
+        }
+      }
     }
   }
 
@@ -91,9 +101,9 @@ public class PasswordVault {
    *
    * @throws IOException If there's an error writing to the file
    */
-  public void dumpFile() throws IOException {
+  public void dumpFile() throws IOException, GeneralSecurityException {
     try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(filename))) {
-      writer.write(Base64.getEncoder().encodeToString(salt));
+      writer.write(Base64.getEncoder().encodeToString(salt) + ":" + encrypt("verification_token"));
       writer.newLine();
 
       for (Map.Entry<String, String> entry : map.entrySet()) {
@@ -106,20 +116,14 @@ public class PasswordVault {
   /**
    * Creates a new password file with a verification token.
    *
-   * @param filename The name of the file to be created
    * @throws PasswordVaultInitException If there's an error creating the file
    */
-  private void createNewFile(String filename, String password) throws PasswordVaultInitException {
+  private void createNewFile() throws PasswordVaultInitException {
     try {
-      this.cipher = Cipher.getInstance("AES");
-      this.salt = generateSalt();
-      this.secretKey = generateSecretKey(password, this.salt);
-      
       String encryptedToken = encrypt("verification_token");
       Files.write(
           Paths.get(filename),
-          (Base64.getEncoder().encodeToString(this.salt) + ":" + encryptedToken)
-              .getBytes());
+          (Base64.getEncoder().encodeToString(this.salt) + ":" + encryptedToken).getBytes());
     } catch (Exception e) {
       throw new PasswordVaultInitException("Error creating new password file", e);
     }
@@ -152,7 +156,7 @@ public class PasswordVault {
   /**
    * Sets an encrypted password for a given key.
    *
-   * @param key      The key associated with the password
+   * @param key The key associated with the password
    * @param password The password to be encrypted and stored
    * @throws Exception If there's an error during encryption or file writing
    */
@@ -165,9 +169,8 @@ public class PasswordVault {
    * Retrieves and decrypts a password for a given key.
    *
    * @param key The key associated with the password
-   * @return An Optional containing the decrypted password, or empty if the key
-   *         doesn't exist or if
-   *         there's an error during decryption
+   * @return An Optional containing the decrypted password, or empty if the key doesn't exist or if
+   *     there's an error during decryption
    */
   public Optional<String> getPassword(String key) {
     try {
@@ -185,11 +188,10 @@ public class PasswordVault {
    * Generates a secret key from the given password and salt.
    *
    * @param passcode The password to generate the key from
-   * @param salt     The salt to use in key generation
+   * @param salt The salt to use in key generation
    * @return A SecretKeySpec for use in encryption/decryption
    * @throws NoSuchAlgorithmException If the specified algorithm is not available
-   * @throws InvalidKeySpecException  If the given key specification is
-   *                                  inappropriate
+   * @throws InvalidKeySpecException If the given key specification is inappropriate
    */
   private SecretKeySpec generateSecretKey(String passcode, byte[] salt)
       throws NoSuchAlgorithmException, InvalidKeySpecException {
