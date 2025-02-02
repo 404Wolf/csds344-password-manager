@@ -25,6 +25,7 @@ import javax.crypto.spec.SecretKeySpec;
 public class PasswordVault {
   private static final String ALGORITHM = "AES";
   private static final String SECRET_KEY_ALGORITHM = "PBKDF2WithHmacSHA256";
+  private static final String VERIFICATION_TOKEN = "verification_token";
   private static final int ITERATIONS = 300_000;
   private static final int KEY_LENGTH = 256;
 
@@ -48,7 +49,7 @@ public class PasswordVault {
     this.map = new HashMap<>();
 
     try {
-      this.cipher = Cipher.getInstance("AES");
+      this.cipher = Cipher.getInstance(ALGORITHM);
       this.salt = generateSalt();
       this.secretKey = generateSecretKey(password, salt);
 
@@ -64,11 +65,14 @@ public class PasswordVault {
     }
   }
 
+  /**
+   * Loads an existing password file and decrypts its contents.
+   */
   private void loadExistingFile(String password)
       throws IOException,
-          PasswordFileParserException,
-          GeneralSecurityException,
-          PasswordVaultInitException {
+      PasswordFileParserException,
+      GeneralSecurityException,
+      PasswordVaultInitException {
     try (Stream<String> lines = Files.lines(Paths.get(filename))) {
       Iterator<String> iterator = lines.iterator();
 
@@ -80,7 +84,7 @@ public class PasswordVault {
       this.salt = Base64.getDecoder().decode(saltAndToken[0]);
       this.secretKey = generateSecretKey(password, salt);
       String decryptedToken = decrypt(saltAndToken[1]);
-      if (!decryptedToken.equals("verification_token")) {
+      if (!decryptedToken.equals(VERIFICATION_TOKEN)) {
         throw new PasswordVaultInitException("Incorrect password");
       }
 
@@ -103,7 +107,7 @@ public class PasswordVault {
    */
   public void dumpFile() throws IOException, GeneralSecurityException {
     try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(filename))) {
-      writer.write(Base64.getEncoder().encodeToString(salt) + ":" + encrypt("verification_token"));
+      writer.write(Base64.getEncoder().encodeToString(salt) + ":" + encrypt(VERIFICATION_TOKEN));
       writer.newLine();
 
       for (Map.Entry<String, String> entry : map.entrySet()) {
@@ -120,7 +124,7 @@ public class PasswordVault {
    */
   private void createNewFile() throws PasswordVaultInitException {
     try {
-      String encryptedToken = encrypt("verification_token");
+      String encryptedToken = encrypt(VERIFICATION_TOKEN);
       Files.write(
           Paths.get(filename),
           (Base64.getEncoder().encodeToString(this.salt) + ":" + encryptedToken).getBytes());
@@ -156,7 +160,7 @@ public class PasswordVault {
   /**
    * Sets an encrypted password for a given key.
    *
-   * @param key The key associated with the password
+   * @param key      The key associated with the password
    * @param password The password to be encrypted and stored
    * @throws Exception If there's an error during encryption or file writing
    */
@@ -169,8 +173,9 @@ public class PasswordVault {
    * Retrieves and decrypts a password for a given key.
    *
    * @param key The key associated with the password
-   * @return An Optional containing the decrypted password, or empty if the key doesn't exist or if
-   *     there's an error during decryption
+   * @return An Optional containing the decrypted password, or empty if the key
+   *         doesn't exist or if
+   *         there's an error during decryption
    */
   public Optional<String> getPassword(String key) {
     try {
@@ -188,10 +193,11 @@ public class PasswordVault {
    * Generates a secret key from the given password and salt.
    *
    * @param passcode The password to generate the key from
-   * @param salt The salt to use in key generation
+   * @param salt     The salt to use in key generation
    * @return A SecretKeySpec for use in encryption/decryption
    * @throws NoSuchAlgorithmException If the specified algorithm is not available
-   * @throws InvalidKeySpecException If the given key specification is inappropriate
+   * @throws InvalidKeySpecException  If the given key specification is
+   *                                  inappropriate
    */
   private SecretKeySpec generateSecretKey(String passcode, byte[] salt)
       throws NoSuchAlgorithmException, InvalidKeySpecException {
@@ -212,14 +218,18 @@ public class PasswordVault {
     return salt;
   }
 
-  /** Exception thrown when there's an error parsing the password file. */
+  /**
+   * Exception thrown when there's an error parsing the password file.
+   */
   public static class PasswordFileParserException extends Exception {
     public PasswordFileParserException(String message) {
       super(message);
     }
   }
 
-  /** Exception thrown when there's an error initializing the PasswordVault. */
+  /**
+   * Exception thrown when there's an error initializing the PasswordVault.
+   */
   public static class PasswordVaultInitException extends Exception {
     public PasswordVaultInitException(String message) {
       super(message);

@@ -5,7 +5,7 @@ import java.io.FileNotFoundException;
 import java.util.Scanner;
 
 public class PasswordManager {
-  public static final String FILE_NAME = "passwords.txt";
+  public static final String PASSWORD_FILE = "passwords.txt";
 
   public static void main(String[] args) throws FileNotFoundException {
     Scanner scanner = new Scanner(System.in);
@@ -14,7 +14,7 @@ public class PasswordManager {
     System.out.print("Enter the passcode to access your passwords: ");
     String passcode = scanner.nextLine();
     try {
-      fileParser = new PasswordVault(FILE_NAME, passcode);
+      fileParser = new PasswordVault(PASSWORD_FILE, passcode);
     } catch (PasswordVaultInitException e) {
       System.out.println("Error opening vault, possibly incorrect password.");
       scanner.close();
