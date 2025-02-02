@@ -1,7 +1,7 @@
 package com.cwru;
 
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 
 public class PasswordFileParser {
   public static Map<String, String> loadFile(String filename) {
@@ -9,6 +9,5 @@ public class PasswordFileParser {
     return map;
   }
 
-  public static void dumpFile(Map<String, String> map) {
-  }
+  public static void dumpFile(Map<String, String> map) {}
 }
