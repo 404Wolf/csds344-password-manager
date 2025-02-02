@@ -1,9 +1,7 @@
 package com.cwru;
 
-import com.cwru.PasswordVault.CryptoException;
 import com.cwru.PasswordVault.PasswordVaultInitException;
 import java.io.FileNotFoundException;
-import java.util.NoSuchElementException;
 import java.util.Scanner;
 
 public class PasswordManager {
@@ -46,7 +44,7 @@ public class PasswordManager {
             try {
               String readPassword = fileParser.getPassword(readLabel).get();
               System.out.println("Found: " + readPassword);
-            } catch (NoSuchElementException | CryptoException e) {
+            } catch (Exception e) {
               System.out.println("Error reading password: " + e.getMessage());
               continue; // error handled
             }
@@ -59,7 +57,7 @@ public class PasswordManager {
           default:
             System.out.println("Invalid choice. Please try again.");
         }
-      } catch (CryptoException e) {
+      } catch (Exception e) {
         System.out.println("Error: " + e.getMessage());
         continue;
       }
