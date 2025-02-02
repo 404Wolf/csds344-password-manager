@@ -1,32 +1,59 @@
 package com.cwru;
 
 import java.util.Base64;
+import java.util.NoSuchElementException;
+import java.util.Scanner;
+
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 
+import java.io.FileNotFoundException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
 public class PasswordManager {
   public static final String FILE_NAME = "passwords.txt";
-  public static final String ALGORITHM = "AES";
-  public static final String SECRET_KEY_ALGORITHM = "PBKDF2WithHmacSHA256";
-  public static final int ITERATIONS = 30;
-  public static final int KEY_LENGTH = 256;
-  public static final int SALT_LENGTH = 16;
+  public static void main(String[] args) throws FileNotFoundException {
+    Scanner scan = new Scanner(System.in);
+    PasswordFileParserEnc fileParser;
 
-  private static SecretKeySpec secretKey;
+    System.out.print("Enter the passcode to access your passwords: ");
+    String passcode = scanner.nextLine();
+    fileParser = new PasswordFileParserEnc(FILE_NAME, passcode);
 
-  public static void main(String[] args) {
-    System.out.println("Hello World!");
-  }
+    while (true) {
+      System.out.println("a : Add Password");
+      System.out.println("r : Read Password");
+      System.out.println("q : Quit");
+      System.out.print("Enter choice: ");
+      String choice = scanner.nextLine();
 
-  public static String encrypt(String strToEncrypt) throws Exception {
-    Cipher cipher = Cipher.getInstance(ALGORITHM);
-    cipher.init(Cipher.ENCRYPT_MODE, secretKey);
-    return Base64.getEncoder().encodeToString(cipher.doFinal(strToEncrypt.getBytes()));
-  }
-
-  public static String decrypt(String strToDecrypt) throws Exception {
-    Cipher cipher = Cipher.getInstance(ALGORITHM);
-    cipher.init(Cipher.DECRYPT_MODE, secretKey);
-    return new String(cipher.doFinal(Base64.getDecoder().decode(strToDecrypt)));
+      switch (choice) {
+        case "a":
+          System.out.print("Enter label for password: ");
+          String writeLabel = scanner.nextLine();
+          System.out.print("Enter password to store: ");
+          String password = scanner.nextLine();
+          fileParser.setPassword(writeLabel, password);
+          break;
+        case "r":
+            System.out.print("Enter label for password: ");
+            String readLabel = scanner.nextLine();
+            try {
+              String readPassword = fileParser.getPassword(readLabel);
+              System.out.println("Found: " + readPassword);
+            } catch (NoSuchElementException e) {
+              continue; // error handled
+            }
+            break;
+        case "q":
+            System.out.println("Quitting");
+            scanner.close();
+            System.exit(0);
+            break;
+        default:
+            System.out.println("Invalid choice. Please try again.");
+      }
+    }
   }
 }
