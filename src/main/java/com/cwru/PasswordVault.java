@@ -4,12 +4,12 @@ import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -28,15 +28,15 @@ import javax.crypto.spec.SecretKeySpec;
 public class PasswordVault {
   private static final String ALGORITHM = "AES";
   private static final String SECRET_KEY_ALGORITHM = "PBKDF2WithHmacSHA256";
-  private static final int ITERATIONS = 3_000_000;
+  private static final int ITERATIONS = 300_000;
   private static final int KEY_LENGTH = 256;
 
   private final Pattern pattern = Pattern.compile("(.+):([^:]+)$");
   private final Map<String, String> map;
   private byte[] salt;
-  private final String filename;
-  private final Cipher cipher;
-  private final SecretKey secretKey;
+  private String filename;
+  private Cipher cipher;
+  private SecretKey secretKey;
 
   /**
    * Initializes the PasswordVault with the given filename and password.
@@ -50,6 +50,7 @@ public class PasswordVault {
     this.map = new HashMap<>();
 
     try {
+      this.cipher = Cipher.getInstance("AES");
       try (Stream<String> lines = Files.lines(Paths.get(filename))) {
         Iterator<String> iterator = lines.iterator();
 
@@ -74,11 +75,9 @@ public class PasswordVault {
           }
         }
       }
-
-      this.cipher = Cipher.getInstance("AES");
       this.secretKey = generateSecretKey(password, salt);
-    } catch (FileNotFoundException e) {
-      createNewFile(filename);
+    } catch (FileNotFoundException | NoSuchFileException e) {
+      createNewFile(filename, password);
       throw new PasswordVaultInitException("Password file not found, created new file");
     } catch (PasswordFileParserException e) {
       throw new PasswordVaultInitException("Error parsing password file", e);
@@ -110,13 +109,16 @@ public class PasswordVault {
    * @param filename The name of the file to be created
    * @throws PasswordVaultInitException If there's an error creating the file
    */
-  private void createNewFile(String filename) throws PasswordVaultInitException {
+  private void createNewFile(String filename, String password) throws PasswordVaultInitException {
     try {
-      salt = generateSalt();
+      this.cipher = Cipher.getInstance("AES");
+      this.salt = generateSalt();
+      this.secretKey = generateSecretKey(password, this.salt);
+      
       String encryptedToken = encrypt("verification_token");
       Files.write(
           Paths.get(filename),
-          (Base64.getEncoder().encodeToString(salt) + "\nverification:" + encryptedToken)
+          (Base64.getEncoder().encodeToString(this.salt) + ":" + encryptedToken)
               .getBytes());
     } catch (Exception e) {
       throw new PasswordVaultInitException("Error creating new password file", e);
