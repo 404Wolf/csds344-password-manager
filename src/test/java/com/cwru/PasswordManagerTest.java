@@ -4,9 +4,7 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
-/**
- * Unit test for the password manager.
- */
+/** Unit test for the password manager. */
 public class PasswordManagerTest extends TestCase {
   public PasswordManagerTest(String testName) {
     super(testName);
