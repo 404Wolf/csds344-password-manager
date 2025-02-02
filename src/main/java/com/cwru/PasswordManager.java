@@ -14,6 +14,7 @@ public class PasswordManager {
   public static final int SALT_LENGTH = 16;
 
   private static SecretKeySpec secretKey;
+
   public static void main(String[] args) {
     System.out.println("Hello World!");
   }
@@ -22,7 +23,7 @@ public class PasswordManager {
     Cipher cipher = Cipher.getInstance(ALGORITHM);
     cipher.init(Cipher.ENCRYPT_MODE, secretKey);
     return Base64.getEncoder().encodeToString(cipher.doFinal(strToEncrypt.getBytes()));
-    }
+  }
 
   public static String decrypt(String strToDecrypt) throws Exception {
     Cipher cipher = Cipher.getInstance(ALGORITHM);
