@@ -19,6 +19,7 @@
           packages = with pkgs; [
             jdt-language-server
             openjdk
+            maven
           ];
         };
       };
