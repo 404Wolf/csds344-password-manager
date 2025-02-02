@@ -16,6 +16,7 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
@@ -165,6 +166,10 @@ public class PasswordVault {
    * @throws Exception If there's an error during encryption or file writing
    */
   public void setPassword(String key, String password) throws Exception {
+    if (map.containsKey(key)) {
+      System.out.println("You are overwriting a password! Aborting.");
+      return;
+    }
     map.put(key, encrypt(password));
     dumpFile();
   }
