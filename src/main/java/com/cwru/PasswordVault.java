@@ -16,7 +16,6 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
-
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
@@ -66,14 +65,12 @@ public class PasswordVault {
     }
   }
 
-  /**
-   * Loads an existing password file and decrypts its contents.
-   */
+  /** Loads an existing password file and decrypts its contents. */
   private void loadExistingFile(String password)
       throws IOException,
-      PasswordFileParserException,
-      GeneralSecurityException,
-      PasswordVaultInitException {
+          PasswordFileParserException,
+          GeneralSecurityException,
+          PasswordVaultInitException {
     try (Stream<String> lines = Files.lines(Paths.get(filename))) {
       Iterator<String> iterator = lines.iterator();
 
@@ -161,7 +158,7 @@ public class PasswordVault {
   /**
    * Sets an encrypted password for a given key.
    *
-   * @param key      The key associated with the password
+   * @param key The key associated with the password
    * @param password The password to be encrypted and stored
    * @throws Exception If there's an error during encryption or file writing
    */
@@ -178,9 +175,8 @@ public class PasswordVault {
    * Retrieves and decrypts a password for a given key.
    *
    * @param key The key associated with the password
-   * @return An Optional containing the decrypted password, or empty if the key
-   *         doesn't exist or if
-   *         there's an error during decryption
+   * @return An Optional containing the decrypted password, or empty if the key doesn't exist or if
+   *     there's an error during decryption
    */
   public Optional<String> getPassword(String key) {
     try {
@@ -198,11 +194,10 @@ public class PasswordVault {
    * Generates a secret key from the given password and salt.
    *
    * @param passcode The password to generate the key from
-   * @param salt     The salt to use in key generation
+   * @param salt The salt to use in key generation
    * @return A SecretKeySpec for use in encryption/decryption
    * @throws NoSuchAlgorithmException If the specified algorithm is not available
-   * @throws InvalidKeySpecException  If the given key specification is
-   *                                  inappropriate
+   * @throws InvalidKeySpecException If the given key specification is inappropriate
    */
   private SecretKeySpec generateSecretKey(String passcode, byte[] salt)
       throws NoSuchAlgorithmException, InvalidKeySpecException {
@@ -223,18 +218,14 @@ public class PasswordVault {
     return salt;
   }
 
-  /**
-   * Exception thrown when there's an error parsing the password file.
-   */
+  /** Exception thrown when there's an error parsing the password file. */
   public static class PasswordFileParserException extends Exception {
     public PasswordFileParserException(String message) {
       super(message);
     }
   }
 
-  /**
-   * Exception thrown when there's an error initializing the PasswordVault.
-   */
+  /** Exception thrown when there's an error initializing the PasswordVault. */
   public static class PasswordVaultInitException extends Exception {
     public PasswordVaultInitException(String message) {
       super(message);
